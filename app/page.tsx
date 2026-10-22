@@ -1,4 +1,21 @@
-const disputes = [
+"use client";
+import { 
+  useMemo, useState 
+} from "react";
+
+type Dispute = {
+  id: string;
+  customer: string;
+  amount: string;
+  reason: string;
+  date: string;
+  risk: "High" | "Medium" | "Low";
+  status: "Evidence needed" | "Under review" | "Evidence ready";
+  initials: string;
+  color: string;
+};
+
+const disputes: Dispute[] = [
   {
     id: "DP-2026-1042",
     customer: "Olivia Martin",
@@ -61,36 +78,35 @@ const disputes = [
 ];
 
 const metrics = [
-  {
-    label: "Open disputes",
-    value: "24",
-    change: "+4 this week",
-    icon: "◈",
-    tone: "text-blue-600 bg-blue-50",
+  { 
+    label: "Open disputes", 
+    value: "24", 
+    change: "+4 this week", 
+    icon: "◈", 
+    tone: "text-blue-600 bg-blue-50" 
   },
 
-  {
-    label: "Amount at risk",
-    value: "$12,840",
-    change: "Across open cases",
-    icon: "$",
-    tone: "text-rose-600 bg-rose-50",
+  { 
+    label: "Amount at risk", 
+    value: "$12,840", 
+    change: "Across open cases", 
+    icon: "$", 
+    tone: "text-rose-600 bg-rose-50" },
+  
+  { 
+    label: "Evidence ready", 
+    value: "18", 
+    change: "Awaiting review", 
+    icon: "✓", 
+    tone: "text-emerald-600 bg-emerald-50" 
   },
-
-  {
-    label: "Evidence ready",
-    value: "18",
-    change: "Awaiting review",
-    icon: "✓",
-    tone: "text-emerald-600 bg-emerald-50",
-  },
-
-  {
-    label: "Response rate",
-    value: "94.2%",
-    change: "+2.4% this month",
-    icon: "↗",
-    tone: "text-violet-600 bg-violet-50",
+  
+  { 
+    label: "Response rate", 
+    value: "94.2%", 
+    change: "+2.4% this month", 
+    icon: "↗", 
+    tone: "text-violet-600 bg-violet-50" 
   },
 ];
 
@@ -102,10 +118,7 @@ function RiskBadge({ risk }: { risk: string }) {
   };
 
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${styles[risk]}`}>
-      <span className="mr-1.5">●</span>
-      {risk}
-    </span>
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${styles[risk]}`}>● {risk}</span>
   );
 }
 
@@ -117,22 +130,43 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   return (
-    <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${styles[status]}`}>
-      {status}
-    </span>
+    <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${styles[status]}`}>{status}</span>
   );
 }
 
 export default function Home() {
+  const [search, setSearch] = useState("");
+  const [riskFilter, setRiskFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [selected, setSelected] = useState<Dispute | null>(null);
+
+  const filteredDisputes = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return disputes.filter((dispute) => {
+      const matchesSearch = [
+        dispute.id,
+        dispute.customer,
+        dispute.reason,
+      ].some((value) => value.toLowerCase().includes(query));
+
+      const matchesRisk = riskFilter === "All" || dispute.risk === riskFilter;
+      const matchesStatus = statusFilter === "All" || dispute.status === statusFilter;
+
+      return matchesSearch && matchesRisk && matchesStatus;
+    });
+
+  },
+
+  [search, riskFilter, statusFilter]);
+
   return (
     <main className="min-h-screen bg-[#f6f8fc] text-slate-800">
       <div className="flex min-h-screen">
-        {/* Sidebar */}
         <aside className="hidden w-64 shrink-0 flex-col bg-[#10182b] text-slate-300 lg:flex">
           <div className="flex h-20 items-center gap-3 border-b border-white/10 px-6">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500 text-xl font-bold text-white">P</div>
             <div>
-              <p className="text-lg font-bold tracking-tight text-white">ProofLedger</p>
+              <p className="text-lg font-bold text-white">ProofLedger</p>
               <p className="text-xs text-slate-400">Dispute intelligence</p>
             </div>
           </div>
@@ -140,122 +174,106 @@ export default function Home() {
           <div className="px-4 py-6">
             <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Workspace</p>
             <nav className="space-y-1">
-              <a href="#overview" className="flex items-center gap-3 rounded-lg bg-blue-500/15 px-3 py-3 text-sm font-semibold text-blue-300">
-                <span>▦</span> Overview
-              </a>
-
-              <a href="#disputes" className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition hover:bg-white/5 hover:text-white">
-                <span>◈</span> Disputes
-                <span className="ml-auto rounded-md bg-white/10 px-2 py-0.5 text-xs">24</span>
-              </a>
-
-              <a href="#investigation" className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition hover:bg-white/5 hover:text-white">
-                <span>⌕</span> Investigations
-              </a>
-
-              <a href="#proof-records" className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition hover:bg-white/5 hover:text-white">
-                <span>▤</span> Proof Records
-              </a>
-            </nav>
-
-            <p className="mb-3 mt-9 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Management</p>
-            <nav className="space-y-1">
-              <a href="#activity" className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition hover:bg-white/5 hover:text-white">
-                <span>◷</span> Activity log
-              </a>
-
-              <a href="#settings" className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition hover:bg-white/5 hover:text-white">
-                <span>⚙</span> Settings
-              </a>
+              <a href="#overview" className="block rounded-lg bg-blue-500/15 px-3 py-3 text-sm font-semibold text-blue-300">▦　Overview</a>
+              <a href="#disputes" className="block rounded-lg px-3 py-3 text-sm hover:bg-white/5">◈　Disputes</a>
+              <a href="#investigation" className="block rounded-lg px-3 py-3 text-sm hover:bg-white/5">⌕　Investigations</a>
+              <a href="#proof-records" className="block rounded-lg px-3 py-3 text-sm hover:bg-white/5">▤　Proof Records</a>
             </nav>
           </div>
 
           <div className="mt-auto p-4">
             <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-              <div className="mb-2 flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                <span className="text-xs font-semibold text-white">Demo environment</span>
-              </div>
-              <p className="text-xs leading-5 text-slate-400">Sample data only. No live PayPal account connected.</p>
-            </div>
-
-            <div className="mt-4 flex items-center gap-3 border-t border-white/10 pt-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-400/20 text-sm font-bold text-indigo-200">NB</div>
-              <div>
-                <p className="text-sm font-medium text-white">Merchant workspace</p>
-                <p className="text-xs text-slate-400">Demo account</p>
-              </div>
+              <p className="mb-2 text-xs font-semibold text-white">● Demo environment</p>
+              <p className="text-xs leading-5 text-slate-400">Fictional sample data only. No live PayPal account connected.</p>
             </div>
           </div>
         </aside>
 
-        {/* Main workspace */}
         <section id="overview" className="min-w-0 flex-1">
           <header className="flex min-h-20 flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4 sm:px-8">
             <div>
               <p className="text-xs text-slate-500">Workspace / Overview</p>
-              <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-900">Risk & dispute overview</h1>
+              <h1 className="mt-1 text-xl font-bold text-slate-900">Risk & dispute overview</h1>
             </div>
-
-            <div className="flex items-center gap-3">
-              <span className="hidden items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 sm:flex">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />Demo mode</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700">NB</div>
-            </div>
+            <span className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600">● Demo mode</span>
           </header>
 
           <div className="mx-auto max-w-[1500px] space-y-7 p-5 sm:p-8">
-            {/* Welcome */}
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-blue-600">THURSDAY, OCTOBER 22</p>
-                <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Good evening 👋</h2>
-                <p className="mt-2 text-sm text-slate-500">Here&apos;s what&apos;s happening with your disputes today.</p>
-              </div>
-
-              <a href="#disputes" className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700">
-                View disputes <span>→</span>
-              </a>
+            <div>
+              <p className="text-sm font-medium text-blue-600">MERCHANT WORKSPACE</p>
+              <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">Good evening 👋</h2>
+              <p className="mt-2 text-sm text-slate-500">Investigate disputes, organize evidence, and make informed decisions.</p>
             </div>
 
-            {/* Metrics */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {metrics.map((metric) => (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{metrics.map((metric) => (
                 <div key={metric.label} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-slate-500">
-                      {metric.label}
-                    </p>
+                    <p className="text-sm font-medium text-slate-500">{metric.label}</p>
                     <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg font-bold ${metric.tone}`}>{metric.icon}</div>
                   </div>
-                  <p className="mt-4 text-3xl font-bold tracking-tight text-slate-900">{metric.value}</p>
+                  <p className="mt-4 text-3xl font-bold text-slate-900">{metric.value}</p>
                   <p className="mt-2 text-xs text-slate-500">{metric.change}</p>
                 </div>
               ))}
             </div>
 
-            {/* Priority alert */}
-            <div id="investigation" className="flex flex-col gap-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-lg text-amber-700">!</div>
-                <div>
-                  <p className="font-semibold text-slate-900">3 disputes need your attention</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">Review high-risk cases and prepare evidence before their response deadlines.</p>
-                </div>
+            <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-5 sm:flex-row sm:items-center">
+              <div className="flex-1">
+                <p className="font-semibold text-slate-900">Prioritize disputes that need attention</p>
+                <p className="mt-1 text-sm text-slate-600">Review high-risk cases and identify missing evidence.</p>
               </div>
-
-              <a href="#disputes" className="shrink-0 self-start rounded-lg border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 sm:self-center">Review cases</a>
+              <a href="#disputes" className="rounded-lg border border-amber-300 bg-white px-4 py-2.5 text-center text-sm font-semibold text-amber-800 hover:bg-amber-100">Review cases ↓</a>
             </div>
 
-            {/* Table */}
             <div id="disputes" className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-5 sm:px-6">
-                <div>
-                  <h3 className="font-bold text-slate-900">Recent disputes</h3>
-                  <p className="mt-1 text-xs text-slate-500">Track cases and prioritize your next action.</p>
+              <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
+                <h3 className="font-bold text-slate-900">Dispute explorer</h3>
+                <p className="mt-1 text-xs text-slate-500">Search cases, filter by risk, or open a dispute to investigate it.</p>
+
+                <div className="mt-5 grid gap-3 md:grid-cols-3">
+                  <div className="md:col-span-1">
+                    <label htmlFor="dispute-search" className="mb-1.5 block text-xs font-semibold text-slate-600">Search disputes</label>
+                    <input
+                      id="dispute-search"
+                      type="search"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Customer, ID, or reason..."
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="risk-filter" className="mb-1.5 block text-xs font-semibold text-slate-600">Risk level</label>
+                    <select id="risk-filter" value={riskFilter} onChange={(event) => setRiskFilter(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500">
+                      <option>All</option>
+                      <option>High</option>
+                      <option>Medium</option>
+                      <option>Low</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="status-filter" className="mb-1.5 block text-xs font-semibold text-slate-600">Case status</label>
+                    <select id="status-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500">
+                      <option>All</option>
+                      <option>Evidence needed</option>
+                      <option>Under review</option>
+                      <option>Evidence ready</option>
+                    </select>
+                  </div>
                 </div>
-                <span className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600">5 sample cases</span>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-slate-500">Showing <strong>{filteredDisputes.length}</strong> of {disputes.length} sample cases</p>
+                  <button onClick={() => { 
+                    setSearch(""); 
+                    setRiskFilter("All"); 
+                    setStatusFilter("All"); 
+                  }} className="text-xs font-semibold text-blue-600 hover:text-blue-800">Clear filters</button>
+                </div>
               </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[850px] text-left text-sm">
                   <thead className="bg-slate-50/80 text-xs text-slate-500">
@@ -266,65 +284,99 @@ export default function Home() {
                       <th className="px-4 py-4 font-semibold">Reason</th>
                       <th className="px-4 py-4 font-semibold">Risk</th>
                       <th className="px-4 py-4 font-semibold">Status</th>
-                      <th className="px-4 py-4 font-semibold">Date</th>
+                      <th className="px-4 py-4 font-semibold">Open</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {disputes.map((dispute) => (
-                      <tr key={dispute.id} className="transition hover:bg-slate-50/80">
+                  <tbody className="divide-y divide-slate-100">{filteredDisputes.map((dispute) => (
+                      <tr key={dispute.id} className="transition hover:bg-blue-50/50">
                         <td className="whitespace-nowrap px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${dispute.color}`}>{dispute.initials}</div>
                             <span className="font-semibold text-slate-800">{dispute.customer}</span>
                           </div>
                         </td>
+
                         <td className="whitespace-nowrap px-4 py-4 font-mono text-xs text-slate-500">{dispute.id}</td>
-                        <td className="whitespace-nowrap px-4 py-4 font-semibold text-slate-800">{dispute.amount}</td>
+                        <td className="whitespace-nowrap px-4 py-4 font-semibold">{dispute.amount}</td>
                         <td className="whitespace-nowrap px-4 py-4 text-slate-600">{dispute.reason}</td>
                         <td className="whitespace-nowrap px-4 py-4"><RiskBadge risk={dispute.risk} /></td>
+                        <td className="whitespace-nowrap px-4 py-4"><StatusBadge status={dispute.status} /></td>
                         <td className="whitespace-nowrap px-4 py-4">
-                          <StatusBadge status={dispute.status} />
+
+                          <button onClick={() => setSelected(dispute)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:border-blue-300 hover:bg-blue-50">
+                            Investigate →
+                          </button>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-500">{dispute.date}</td>
                       </tr>
                     ))}
+                    
+                    {filteredDisputes.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-12 text-center">
+                          <p className="font-semibold text-slate-700">No matching disputes</p>
+                          <p className="mt-1 text-sm text-slate-500">Try another search or clear your filters.</p>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-6 py-4 text-xs text-slate-500">
-                <span>Showing 5 of 24 sample disputes</span>
-                <a href="#proof-records" className="font-semibold text-blue-600 hover:text-blue-800">Explore Proof Records →</a>
-              </div>
             </div>
 
-            {/* Product workflow */}
+            {selected && (
+              <div id="investigation" className="rounded-2xl border border-blue-200 bg-white p-6 shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Investigation workspace · Demo</p>
+                    <h3 className="mt-2 text-xl font-bold text-slate-900">{selected.customer}</h3>
+                    <p className="mt-1 font-mono text-xs text-slate-500">{selected.id}</p>
+                  </div>
+                  <button onClick={() => setSelected(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50">Close ✕</button>
+                </div>
+
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Dispute amount</p><p className="mt-1 font-bold text-slate-900">{selected.amount}</p></div>
+                  <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Reason</p><p className="mt-1 font-semibold text-slate-900">{selected.reason}</p></div>
+                  <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Risk level</p><div className="mt-2"><RiskBadge risk={selected.risk} /></div></div>
+                  <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Current status</p><div className="mt-2"><StatusBadge status={selected.status} /></div></div>
+                </div>
+
+                <h4 className="mt-6 font-bold text-slate-900">Evidence checklist</h4>
+                <p className="mt-1 text-sm text-slate-500">Suggested items to review. These are not verified evidence and do not guarantee a dispute outcome.</p>
+                <ul className="mt-4 space-y-3 text-sm text-slate-700">
+                  {["Order confirmation and transaction details", "Shipping, delivery, or service-fulfilment records", "Customer communication and refund history"].map((item) => (
+                    <li key={item} className="flex items-start gap-3 rounded-lg border border-slate-100 p-3">
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-slate-300 text-xs text-slate-400"> </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-800">Next step: evidence-backed recommendation</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">The investigation engine is not connected yet. Later, ProofLedger can evaluate available evidence and explain possible next steps for merchant review.</p>
+                </div>
+              </div>
+            )}
+
             <div id="proof-records" className="grid gap-5 lg:grid-cols-2">
               <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
                 <p className="text-xs font-bold uppercase tracking-widest text-blue-600">How it works</p>
                 <h3 className="mt-2 text-lg font-bold text-slate-900">Every decision needs proof.</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-500">ProofLedger is designed to connect dispute signals, evidence, recommendations, and merchant decisions in one auditable workflow.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">Connect dispute signals, evidence, recommendations, and merchant decisions in one auditable workflow.</p>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  {["Detect", "Investigate", "Prove", "Decide", "Audit"].map(
-                    (step, index) => (
-                      <span key={step} className="inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
-                        <span className="text-blue-600">{index + 1}.</span>
-                        {step}
-                      </span>
-                    ),
-                  )}
+                  {["Detect", "Investigate", "Prove", "Decide", "Audit"].map((step, index) => (
+                    <span key={step} className="rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                      <span className="text-blue-600">{index + 1}. </span>{step}
+                    </span>
+                  ))}
                 </div>
               </div>
 
-              <div id="activity" className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-violet-600">Investigation workspace</p>
-                    <h3 className="mt-2 text-lg font-bold text-slate-900">Evidence before decisions</h3>
-                  </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-xl text-violet-600">◈</div>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-slate-500">The next stage will add transaction context, explainable risk signals, evidence checklists, and human-approved recommendations.</p>
+              <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-widest text-violet-600">Product roadmap</p>
+                <h3 className="mt-2 text-lg font-bold text-slate-900">Evidence before decisions</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-500">Next: transaction context, explainable risk signals, evidence tracking, and human-approved recommendations.</p>
                 <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
                   <p className="text-sm font-semibold text-slate-700">Investigation engine</p>
                   <p className="mt-1 text-xs text-slate-500">Planned feature · Not connected yet</p>
@@ -332,7 +384,7 @@ export default function Home() {
               </div>
             </div>
 
-            <footer id="settings" className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 py-5 text-xs text-slate-400">
+            <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 py-5 text-xs text-slate-400">
               <span>ProofLedger © 2026</span>
               <span>Prototype · All dispute data is fictional</span>
             </footer>
