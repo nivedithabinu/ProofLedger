@@ -77,6 +77,69 @@ const disputes: Dispute[] = [
   },
 ];
 
+type RiskSignal = {
+  title: string;
+  explanation: string;
+};
+
+function getEvidence(reason: string): string[] {
+  switch (reason) {
+    case "Item not received":
+      return [
+        "Order confirmation and transaction details",
+        "Shipping tracking and delivery confirmation",
+        "Customer communication about delivery",
+      ];
+    
+    case "Unrecognized transaction":
+      return [
+        "Transaction details and payment reference",
+        "Available order and fulfillment records",
+        "Customer communications or account activity records",
+      ];
+    
+    case "Duplicate charge":
+      return [
+        "Transaction IDs and timestamps for both charges",
+        "Payment processor records showing each charge",
+        "Refund or reversal records, if applicable",
+      ];
+
+    case "Item not as described":
+      return [
+        "Original product listing and description",
+        "Order details and fulfillment records",
+        "Customer complaint and resolution communications",
+      ];
+
+    case "Refund not received":
+      return [
+        "Original transaction and refund policy",
+        "Refund initiation and processing records",
+        "Payment processor reference and customer communications",
+      ];
+
+    default:
+      return [
+        "Order confirmation and transaction details",
+        "Relevant fulfillment or service records",
+        "Customer communications and resolution history",
+      ];  
+  }
+}
+
+function getRiskSignals(dispute: Dispute): RiskSignal[] {
+  const signals: RiskSignal[] = [];
+  if (dispute.status==="Evidence needed") {
+    signals.push({
+      title: "Evidence collection needed",
+      explanation: "This demo case is marked as needing evidence. Review the relevant records before deciding on a response.",
+    })
+  }
+
+  return signals;
+}
+
 const metrics = [
   { 
     label: "Open disputes", 
@@ -139,6 +202,7 @@ export default function Home() {
   const [riskFilter, setRiskFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selected, setSelected] = useState<Dispute | null>(null);
+  const [collectedEvidence, setCollectedEvidence] = useState<string[]>([]);
 
   const filteredDisputes = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -309,7 +373,7 @@ export default function Home() {
                         </td>
                       </tr>
                     ))}
-                    
+
                     {filteredDisputes.length === 0 && (
                       <tr>
                         <td colSpan={7} className="px-6 py-12 text-center">
@@ -341,56 +405,106 @@ export default function Home() {
                   <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Current status</p><div className="mt-2"><StatusBadge status={selected.status} /></div></div>
                 </div>
 
-                <h4 className="mt-6 font-bold text-slate-900">Evidence checklist</h4>
-                <p className="mt-1 text-sm text-slate-500">Suggested items to review. These are not verified evidence and do not guarantee a dispute outcome.</p>
-                <ul className="mt-4 space-y-3 text-sm text-slate-700">
-                  {["Order confirmation and transaction details", "Shipping, delivery, or service-fulfilment records", "Customer communication and refund history"].map((item) => (
-                    <li key={item} className="flex items-start gap-3 rounded-lg border border-slate-100 p-3">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-slate-300 text-xs text-slate-400"> </span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                
+<div className="mt-6 rounded-xl border border-amber-200 bg-amber-50/60 p-5">
+  <div className="flex flex-wrap items-center justify-between gap-2">
+    <h4 className="font-bold text-slate-900">
+      Explainable risk assessment
+    </h4>
+    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
+      Rule-based demo
+    </span>
+  </div>
 
-                <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-800">Next step: evidence-backed recommendation</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">The investigation engine is not connected yet. Later, ProofLedger can evaluate available evidence and explain possible next steps for merchant review.</p>
-                </div>
-              </div>
-            )}
+  <p className="mt-2 text-sm text-slate-600">
+    These signals explain review priorities, not the probability
+    of losing a dispute. They are generated from the sample case
+    fields and have not been validated against real outcomes.
+  </p>
 
-            <div id="proof-records" className="grid gap-5 lg:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-                <p className="text-xs font-bold uppercase tracking-widest text-blue-600">How it works</p>
-                <h3 className="mt-2 text-lg font-bold text-slate-900">Every decision needs proof.</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-500">Connect dispute signals, evidence, recommendations, and merchant decisions in one auditable workflow.</p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {["Detect", "Investigate", "Prove", "Decide", "Audit"].map((step, index) => (
-                    <span key={step} className="rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
-                      <span className="text-blue-600">{index + 1}. </span>{step}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-                <p className="text-xs font-bold uppercase tracking-widest text-violet-600">Product roadmap</p>
-                <h3 className="mt-2 text-lg font-bold text-slate-900">Evidence before decisions</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-500">Next: transaction context, explainable risk signals, evidence tracking, and human-approved recommendations.</p>
-                <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-700">Investigation engine</p>
-                  <p className="mt-1 text-xs text-slate-500">Planned feature · Not connected yet</p>
-                </div>
-              </div>
-            </div>
-
-            <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 py-5 text-xs text-slate-400">
-              <span>ProofLedger © 2026</span>
-              <span>Prototype · All dispute data is fictional</span>
-            </footer>
-          </div>
-        </section>
+  <div className="mt-4 space-y-3">
+    {getRiskSignals(selected).map((signal) => (
+      <div key={signal.title} className="rounded-lg border border-amber-100 bg-white p-4">
+        <p className="text-sm font-semibold text-slate-900">
+          {signal.title}
+        </p>
+        <p className="mt-1 text-sm leading-6 text-slate-600">
+          {signal.explanation}
+        </p>
       </div>
-    </main>
-  );
+    ))}
+  </div>
+</div>
+
+<h4 className="mt-6 font-bold text-slate-900">Recommended evidence</h4>
+<p className="mt-1 text-sm text-slate-500">Check an item only after you have confirmed that the record is available.</p>
+
+<p className="mt-2 text-sm font-medium text-slate-700">
+  {getEvidence(selected.reason).filter((item) =>
+  collectedEvidence.includes(`${selected.id}-${item}`)).length} of {getEvidence(selected.reason).length} records confirmed
+</p>
+
+<ul className="mt-4 space-y-3 text-sm text-slate-700">
+  {getEvidence(selected.reason).map((item) => {
+    const evidenceKey = `${selected.id}-${item}`;
+    const isCollected = collectedEvidence.includes(evidenceKey);
+    return (
+      <li key={item}>
+        <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${
+            isCollected ? "border-emerald-200 bg-emerald-50" : "border-slate-100"}`}>
+          <input type="checkbox" checked={isCollected} onChange={(event) => {
+            setCollectedEvidence((previous) => event.target.checked ? [...previous, evidenceKey] : previous.filter((entry) => entry !== evidenceKey));
+          }}
+          className="mt-1 h-4 w-4 accent-emerald-600"/>
+          <span>{item}</span>
+        </label>
+      </li>
+    );
+  })}
+</ul>
+
+<div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+  <p className="text-sm font-semibold text-slate-800">Next step: merchant review</p>
+  <p className="mt-1 text-sm leading-6 text-slate-500">
+    Review the suggested records, confirm which evidence is available,
+    and check the applicable response deadline. ProofLedger does not
+    submit evidence or take payment actions automatically.
+  </p>
+</div>
+</div>)}
+
+<div id="proof-records" className="grid gap-5 lg:grid-cols-2">
+  <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+  <p className="text-xs font-bold uppercase tracking-widest text-blue-600">How it works</p>
+  <h3 className="mt-2 text-lg font-bold text-slate-900">Every decision needs proof.</h3>
+  <p className="mt-2 text-sm leading-6 text-slate-500">Connect dispute signals, evidence, recommendations, and merchant decisions in one auditable workflow.</p>
+  <div className="mt-5 flex flex-wrap gap-2">
+    {["Detect", "Investigate", "Prove", "Decide", "Audit"].map((step, index) => (
+      <span key={step} className="rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+        <span className="text-blue-600">{index + 1}. </span>{step}
+        </span>
+    ))}
+  </div>
+</div>
+
+<div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+<p className="text-xs font-bold uppercase tracking-widest text-violet-600">Product roadmap</p>
+<h3 className="mt-2 text-lg font-bold text-slate-900">Evidence before decisions</h3>
+<p className="mt-3 text-sm leading-6 text-slate-500">Next: transaction context, explainable risk signals, evidence tracking, and human-approved recommendations.</p>
+<div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+  <p className="text-sm font-semibold text-slate-700">Investigation engine</p>
+  <p className="mt-1 text-xs text-slate-500">Planned feature · Not connected yet</p>
+  </div>
+  </div>
+</div>
+
+<footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 py-5 text-xs text-slate-400">
+  <span>ProofLedger © 2026</span>
+  <span>Prototype · All dispute data is fictional</span>
+  </footer>
+  </div>
+  </section>
+  </div>
+  </main>
+);
 }
