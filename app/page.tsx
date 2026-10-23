@@ -1,6 +1,6 @@
 "use client";
 import { 
-  useMemo, useState 
+  useMemo, useState, useEffect,
 } from "react";
 
 type Dispute = {
@@ -203,6 +203,38 @@ export default function Home() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [selected, setSelected] = useState<Dispute | null>(null);
   const [collectedEvidence, setCollectedEvidence] = useState<string[]>([]);
+  const [evidenceLoaded, setEvidenceLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("proofledger-evidence");
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) {
+          setCollectedEvidence(parsed);
+        }
+      }
+    }
+
+    catch {
+      console.error("Unable to load saved evidence");
+    }
+
+    finally {
+      setEvidenceLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!evidenceLoaded) return;
+    try {
+      localStorage.setItem("proofledger-evidence", JSON.stringify(collectedEvidence));
+    }
+
+    catch {
+      console.error("Unable to save evidence.");
+    }
+  }, [collectedEvidence, evidenceLoaded]);
 
   const filteredDisputes = useMemo(() => {
     const query = search.trim().toLowerCase();
