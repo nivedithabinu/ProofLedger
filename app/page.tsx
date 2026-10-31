@@ -82,6 +82,14 @@ type RiskSignal = {
   explanation: string;
 };
 
+type AuditEntry = {
+  id: string;
+  disputeId: string;
+  action: "Evidence collected" | "Evidence unmarked";
+  evidence: string;
+  timestamp: string;
+};
+
 function getEvidence(reason: string): string[] {
   switch (reason) {
     case "Item not received":
@@ -204,37 +212,39 @@ export default function Home() {
   const [selected, setSelected] = useState<Dispute | null>(null);
   const [collectedEvidence, setCollectedEvidence] = useState<string[]>([]);
   const [evidenceLoaded, setEvidenceLoaded] = useState(false);
-
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
+  const [auditLoaded, setAuditLoaded] = useState(false);
+  
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("proofledger-evidence");
+      const saved = localStorage.getItem("proofledger-audit");
       if (saved) {
         const parsed: unknown = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) {
-          setCollectedEvidence(parsed);
+        if (Array.isArray(parsed) && parsed.every((item) => item && typeof item.id === "string" && typeof item.disputeId === "string" && (item.action === "Evidence collected" || item.action === "Evidence unmarked") && typeof item.evidence === "string" && typeof item.timestamp === "string")) {
+          setAuditEntries(parsed as AuditEntry[]);
         }
       }
     }
 
     catch {
-      console.error("Unable to load saved evidence");
-    }
-
+      console.error("Unable to load audit history.");
+    } 
+    
     finally {
-      setEvidenceLoaded(true);
+      setAuditLoaded(true);
     }
   }, []);
 
-  useEffect(() => {
-    if (!evidenceLoaded) return;
+  useEffect(()=> {
+    if (!auditLoaded) return;
     try {
-      localStorage.setItem("proofledger-evidence", JSON.stringify(collectedEvidence));
+      localStorage.setItem("proofledger-audit", JSON.stringify(auditEntries));
     }
 
     catch {
-      console.error("Unable to save evidence.");
+      console.error("Unable to save audit history");
     }
-  }, [collectedEvidence, evidenceLoaded]);
+  }, [auditEntries, auditLoaded]);
 
   const filteredDisputes = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -485,8 +495,19 @@ export default function Home() {
         <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${
             isCollected ? "border-emerald-200 bg-emerald-50" : "border-slate-100"}`}>
           <input type="checkbox" checked={isCollected} onChange={(event) => {
-            setCollectedEvidence((previous) => event.target.checked ? [...previous, evidenceKey] : previous.filter((entry) => entry !== evidenceKey));
+            const checked = event.target.checked;
+            setCollectedEvidence((previous) => checked ? previous.includes(evidenceKey) ? previous : [...previous, evidenceKey] : previous.filter((entry) => entry !== evidenceKey));
+            const entry: AuditEntry = {
+              id: crypto.randomUUID(),
+              disputeId: selected.id,
+              action: checked ? "Evidence collected" : "Evidence unmarked",
+              evidence: item,
+              timestamp: new Date().toISOString(),
+            };
+            
+            setAuditEntries((previous) => [entry, ...previous]);
           }}
+
           className="mt-1 h-4 w-4 accent-emerald-600"/>
           <span>{item}</span>
         </label>
@@ -517,6 +538,29 @@ export default function Home() {
         </span>
     ))}
   </div>
+  <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+  <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">Proof Records</p>
+  <h3 className="mt-2 text-lg font-bold text-slate-900">Recent activity</h3>
+  <p className="mt-1 text-sm text-slate-500">A history of evidence checklist changes in this browser.</p>
+  <div className="mt-5 space-y-4">
+    {auditEntries.length === 0 ? (
+      <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">No activity yet. Open a dispute and update its evidence checklist.</p>
+    ) : (
+      auditEntries.slice(0, 10).map((entry) => (
+      <div key={entry.id} className="border-l-2 border-emerald-200 pl-4">
+        <p className="text-sm font-semibold text-slate-800">{entry.action}</p>
+        <p className="mt-1 text-sm text-slate-600">{entry.evidence}</p>
+        <p className="mt-1 font-mono text-xs text-slate-400">{entry.disputeId}</p>
+        <p className="mt-1 text-xs text-slate-500">{new Date(entry.timestamp).toLocaleString()}</p>
+      </div>
+      ))
+    )}
+  </div>
+
+  <p className="mt-5 border-t border-slate-100 pt-3 text-xs text-slate-400">
+    Demo audit history stored in this browser. Not tamper-proof.
+  </p>
+</div>
 </div>
 
 <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
