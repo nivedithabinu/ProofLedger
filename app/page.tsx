@@ -486,35 +486,63 @@ export default function Home() {
   collectedEvidence.includes(`${selected.id}-${item}`)).length} of {getEvidence(selected.reason).length} records confirmed
 </p>
 
-<ul className="mt-4 space-y-3 text-sm text-slate-700">
-  {getEvidence(selected.reason).map((item) => {
-    const evidenceKey = `${selected.id}-${item}`;
-    const isCollected = collectedEvidence.includes(evidenceKey);
-    return (
-      <li key={item}>
-        <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${
-            isCollected ? "border-emerald-200 bg-emerald-50" : "border-slate-100"}`}>
-          <input type="checkbox" checked={isCollected} onChange={(event) => {
-            const checked = event.target.checked;
-            setCollectedEvidence((previous) => checked ? previous.includes(evidenceKey) ? previous : [...previous, evidenceKey] : previous.filter((entry) => entry !== evidenceKey));
-            const entry: AuditEntry = {
-              id: crypto.randomUUID(),
-              disputeId: selected.id,
-              action: checked ? "Evidence collected" : "Evidence unmarked",
-              evidence: item,
-              timestamp: new Date().toISOString(),
-            };
-            
-            setAuditEntries((previous) => [entry, ...previous]);
-          }}
+{/* Evidence completeness calculations */}
+{(() => {
+  const evidenceItems = getEvidence(selected.reason);
+  const collectedCount = evidenceItems.filter((evidence) => collectedEvidence.includes(`${selected.id}-${evidence}`)).length;
+  const missingCount = evidenceItems.length-collectedCount;
+  const completionPercentage = evidenceItems.length === 0 ? 0 : Math.round((collectedCount / evidenceItems.length) * 100);
+  return (
+    <>
+    {/* Evidence completeness card */}
+    <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="font-bold text-slate-900">Evidence completeness</h4>
+        <span className="text-lg font-bold text-emerald-700">{completionPercentage}%</span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${completionPercentage}%` }}/></div>
+        <div className="mt-3 flex justify-between text-sm">
+          <span className="text-emerald-700">{collectedCount} collected</span>
+          <span className="text-slate-500">{missingCount} missing</span>
+        </div>
+        <p className="mt-3 text-sm font-medium text-slate-700">
+          {missingCount === 0 ? "All recommended evidence has been confirmed. Ready for merchant review." : `${missingCount} recommended evidence item(s) still need confirmation.`}
+        </p>
+      </div>
 
-          className="mt-1 h-4 w-4 accent-emerald-600"/>
-          <span>{item}</span>
-        </label>
-      </li>
-    );
-  })}
-</ul>
+      {/* Evidence checklist */}
+      <ul className="mt-4 space-y-3 text-sm text-slate-700">
+        {evidenceItems.map((item) => {
+          const evidenceKey = `${selected.id}-${item}`;
+          const isCollected = collectedEvidence.includes(evidenceKey);
+          return (
+            <li key={item}>
+              <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${
+                isCollected ? "border-emerald-200 bg-emerald-50" : "border-slate-100"
+                }`}>
+                <input type="checkbox" checked={isCollected} onChange={(event) => {
+                  const checked = event.target.checked;
+                  setCollectedEvidence((previous) => checked ? previous.includes(evidenceKey) ? previous : [...previous, evidenceKey] : previous.filter((entry) => entry !== evidenceKey));
+                  const entry: AuditEntry = {
+                    id: crypto.randomUUID(),
+                    disputeId: selected.id,
+                    action: checked ? "Evidence collected" : "Evidence unmarked",
+                    evidence: item,
+                    timestamp: new Date().toISOString(),
+                  };
+
+                  setAuditEntries((previous) => [entry, ...previous]);
+                }} className="mt-1 h-4 w-4 accent-emerald-600" />
+                <span>{item}</span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+})()}
 
 <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
   <p className="text-sm font-semibold text-slate-800">Next step: merchant review</p>
@@ -538,6 +566,7 @@ export default function Home() {
         </span>
     ))}
   </div>
+  </div>
   <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
   <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">Proof Records</p>
   <h3 className="mt-2 text-lg font-bold text-slate-900">Recent activity</h3>
@@ -560,7 +589,6 @@ export default function Home() {
   <p className="mt-5 border-t border-slate-100 pt-3 text-xs text-slate-400">
     Demo audit history stored in this browser. Not tamper-proof.
   </p>
-</div>
 </div>
 
 <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
