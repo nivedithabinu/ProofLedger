@@ -554,7 +554,7 @@ export default function Home() {
 </div>
 </div>)}
 
-<div id="proof-records" className="grid gap-5 lg:grid-cols-2">
+<div id="proof-records" className="grid grid-cols-1 items-start gap-5 md:grid-cols-2">
   <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
   <p className="text-xs font-bold uppercase tracking-widest text-blue-600">How it works</p>
   <h3 className="mt-2 text-lg font-bold text-slate-900">Every decision needs proof.</h3>
@@ -571,7 +571,7 @@ export default function Home() {
   <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">Proof Records</p>
   <h3 className="mt-2 text-lg font-bold text-slate-900">Recent activity</h3>
   <p className="mt-1 text-sm text-slate-500">A history of evidence checklist changes in this browser.</p>
-  <div className="mt-5 space-y-4">
+  <div className="mt-5 max-h-96 space-y-4 overflow-y-auto pr-2">
     {auditEntries.length === 0 ? (
       <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">No activity yet. Open a dispute and update its evidence checklist.</p>
     ) : (
@@ -591,7 +591,7 @@ export default function Home() {
   </p>
 </div>
 
-<div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+<div className="md:col-span-2 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
 <p className="text-xs font-bold uppercase tracking-widest text-violet-600">Product roadmap</p>
 <h3 className="mt-2 text-lg font-bold text-slate-900">Evidence before decisions</h3>
 <p className="mt-3 text-sm leading-6 text-slate-500">Next: transaction context, explainable risk signals, evidence tracking, and human-approved recommendations.</p>
