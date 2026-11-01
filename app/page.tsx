@@ -15,6 +15,28 @@ type Dispute = {
   color: string;
 };
 
+type TransactionEvent = {
+  event: string;
+  timestamp: string;
+};
+
+type TransactionRecord = {
+  transactionId: string;
+  disputeId: string;
+  orderId: string;
+  transactionDate: string;
+  amount: string;
+  currency: string;
+  paymentMethod: string;
+  paymentStatus: "Completed" | "Pending" | "Refunded";
+  customerId: string;
+  accountAgeDays: number;
+  previousTransactions: number;
+  successfulPayments: number;
+  previousDisputes: number;
+  events: TransactionEvent[];
+};
+
 const disputes: Dispute[] = [
   {
     id: "DP-2026-1042",
@@ -77,10 +99,157 @@ const disputes: Dispute[] = [
   },
 ];
 
+
+const transactions: TransactionRecord[] = [
+  {
+    transactionId: "TXN-2026-84721",
+    disputeId: "DP-2026-1042",
+    orderId: "ORD-2026-51021",
+    transactionDate: "2026-10-18T10:30:00",
+    amount: "$1,249.00",
+    currency: "USD",
+    paymentMethod: "PayPal",
+    paymentStatus: "Completed",
+    customerId: "CUS-10042",
+    accountAgeDays: 420,
+    previousTransactions: 12,
+    successfulPayments: 11,
+    previousDisputes: 1,
+    events: [
+      { event: "Payment initiated", timestamp: "2026-10-18T10:30:00" },
+      { event: "Payment completed", timestamp: "2026-10-18T10:30:05" },
+      { event: "Order shipped", timestamp: "2026-10-19T14:15:00" },
+      { event: "Dispute opened", timestamp: "2026-10-22T11:00:00" },
+    ],
+  },
+
+  {
+    transactionId: "TXN-2026-84720",
+    disputeId: "DP-2026-1041",
+    orderId: "ORD-2026-51020",
+    transactionDate: "2026-10-17T09:15:00",
+    amount: "$389.50",
+    currency: "USD",
+    paymentMethod: "PayPal",
+    paymentStatus: "Completed",
+    customerId: "CUS-10041",
+    accountAgeDays: 180,
+    previousTransactions: 6,
+    successfulPayments: 6,
+    previousDisputes: 0,
+    events: [
+      { event: "Payment initiated", timestamp: "2026-10-17T09:15:00" },
+      { event: "Payment completed", timestamp: "2026-10-17T09:15:04" },
+      { event: "Dispute opened", timestamp: "2026-10-22T09:30:00" },
+    ],
+  },
+
+  {
+    transactionId: "TXN-2026-84719",
+    disputeId: "DP-2026-1039",
+    orderId: "ORD-2026-51019",
+    transactionDate: "2026-10-16T12:00:00",
+    amount: "$89.99",
+    currency: "USD",
+    paymentMethod: "PayPal",
+    paymentStatus: "Completed",
+    customerId: "CUS-10039",
+    accountAgeDays: 730,
+    previousTransactions: 24,
+    successfulPayments: 24,
+    previousDisputes: 0,
+    events: [
+      { event: "Payment initiated", timestamp: "2026-10-16T12:00:00" },
+      { event: "Payment completed", timestamp: "2026-10-16T12:00:03" },
+      { event: "Dispute opened", timestamp: "2026-10-21T13:00:00" },
+    ],
+  },
+
+  {
+    transactionId: "TXN-2026-84718",
+    disputeId: "DP-2026-1037",
+    orderId: "ORD-2026-51018",
+    transactionDate: "2026-10-15T16:45:00",
+    amount: "$2,450.00",
+    currency: "USD",
+    paymentMethod: "PayPal",
+    paymentStatus: "Completed",
+    customerId: "CUS-10037",
+    accountAgeDays: 95,
+    previousTransactions: 3,
+    successfulPayments: 3,
+    previousDisputes: 0,
+    events: [
+      { event: "Payment initiated", timestamp: "2026-10-15T16:45:00" },
+      { event: "Payment completed", timestamp: "2026-10-15T16:45:06" },
+      { event: "Order shipped", timestamp: "2026-10-17T10:00:00" },
+      { event: "Dispute opened", timestamp: "2026-10-20T14:00:00" },
+    ],
+  },
+
+  {
+    transactionId: "TXN-2026-84717",
+    disputeId: "DP-2026-1034",
+    orderId: "ORD-2026-51017",
+    transactionDate: "2026-10-14T11:20:00",
+    amount: "$156.00",
+    currency: "USD",
+    paymentMethod: "PayPal",
+    paymentStatus: "Completed",
+    customerId: "CUS-10034",
+    accountAgeDays: 365,
+    previousTransactions: 15,
+    successfulPayments: 15,
+    previousDisputes: 0,
+    events: [
+      { event: "Payment initiated", timestamp: "2026-10-14T11:20:00" },
+      { event: "Payment completed", timestamp: "2026-10-14T11:20:04" },
+      { event: "Refund requested", timestamp: "2026-10-18T09:00:00" },
+      { event: "Dispute opened", timestamp: "2026-10-19T15:00:00" },
+    ],
+  },
+];
+
 type RiskSignal = {
   title: string;
   explanation: string;
 };
+
+function getTransactionRiskSignals(transaction: TransactionRecord): RiskSignal[] {
+  const signals: RiskSignal[] = [];
+  const successRate = transaction.previousTransactions > 0 ? transaction.successfulPayments / transaction.previousTransactions : 0;
+  const amount = Number(transaction.amount.replace(/[^0-9.]/g, ""));
+  
+  if (transaction.accountAgeDays<90) {
+    signals.push({
+      title: "New Customer Account",
+      explanation: `This account is only ${transaction.accountAgeDays} days old. Newer accounts may warrant additional verification.`,
+    });
+  }
+
+  if (transaction.previousDisputes >= 1) {
+    signals.push({
+      title: "Previous Dispute History",
+      explanation: `This customer has ${transaction.previousDisputes} previous dispute(s). Review the historical context before making a decision.`,
+    });
+  }
+
+  if (transaction.previousTransactions > 0 && successRate < 0.8) {
+    signals.push({
+      title: "Low Payment Success Rate",
+      explanation: `Only ${(successRate * 100).toFixed(1)}% of previous transactions were successful. This may warrant further review.`,
+    });
+  }
+
+  if (amount >= 2000) {
+    signals.push({
+      title: "High-Value Transaction",
+      explanation: `The transaction amount is ${transaction.amount}. Consider additional verification for this higher-value payment.`,
+    });
+  }
+
+  return signals;
+}
 
 type AuditEntry = {
   id: string;
@@ -210,6 +379,7 @@ export default function Home() {
   const [riskFilter, setRiskFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selected, setSelected] = useState<Dispute | null>(null);
+  const selectedTransaction = selected ? transactions.find((transaction)=>transaction.disputeId===selected.id) : undefined;
   const [collectedEvidence, setCollectedEvidence] = useState<string[]>([]);
   const [evidenceLoaded, setEvidenceLoaded] = useState(false);
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
@@ -429,6 +599,149 @@ export default function Home() {
               </div>
             </div>
 
+            {selectedTransaction && (
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">Transaction Overview</h3>
+                    <p className="mt-1 text-sm text-slate-500">Payment details associated with this dispute</p>
+                  </div>
+                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">{selectedTransaction.paymentStatus}</span>
+                </div>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <p className="text-xs text-slate-500">Transaction ID</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{selectedTransaction.transactionId}</p>
+                  </div>
+                <div>
+                  <p className="text-xs text-slate-500">Order ID</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{selectedTransaction.orderId}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Transaction Amount</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{selectedTransaction.amount} {selectedTransaction.currency}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Payment Method</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{selectedTransaction.paymentMethod}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Transaction Date</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{new Date(selectedTransaction.transactionDate).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Payment Status</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{selectedTransaction.paymentStatus}</p>
+                </div>
+              </div>
+
+              <p className="mt-5 border-t border-slate-200 pt-3 text-xs text-slate-500">Demo data: Transaction information is fictional and is not retrieved from a live PayPal account.</p>
+            </div>)}
+
+            {selectedTransaction && (
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Customer Context</h3>
+                  <p className="mt-1 text-sm text-slate-500">Historical account activity associated with this transaction</p>
+                </div>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Customer ID</p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">{selectedTransaction.customerId}</p>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Account Age</p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">{selectedTransaction.accountAgeDays} days</p>
+                  </div>
+                  
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Previous Transactions</p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">{selectedTransaction.previousTransactions}</p>
+                  </div>
+                  
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Successful Payments</p>
+                    <p className="mt-2 text-lg font-semibold text-green-700">{selectedTransaction.successfulPayments}</p>
+                  </div>
+                  
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Previous Disputes</p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">{selectedTransaction.previousDisputes}</p>
+                  </div>
+                  
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-500">Payment Success Rate</p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">{selectedTransaction.previousTransactions > 0 ? `${((selectedTransaction.successfulPayments/selectedTransaction.previousTransactions)*100).toFixed(1)}%` : "N/A"}</p>
+                  </div>
+                </div>
+                
+                <p className="mt-4 text-xs text-slate-500">Customer history is fictional demo data. It does not represent verified PayPal customer records.</p>
+              </div>
+            )}
+
+            {selectedTransaction && (
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">Transaction Risk Signals</h3>
+                    <p className="mt-1 text-sm text-slate-500">Rule-based indicators identified from transaction history</p>
+                  </div>
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">Explainable Assessment</span>
+                </div>
+                
+                {getTransactionRiskSignals(selectedTransaction).length > 0 ? (
+                  <div className="mt-5 space-y-3">
+                    {getTransactionRiskSignals(selectedTransaction).map((signal, index) => (
+                      <div key={index} className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                        <div className="flex items-start gap-3">
+                          <span className="mt-0.5 text-amber-600">⚠</span>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{signal.title}</p>
+                          <p className="mt-1 text-sm text-slate-600">{signal.explanation}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+              ) : (
+              <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4">
+                <p className="text-sm font-semibold text-green-800">No predefined risk indicators triggered</p>
+                <p className="mt-1 text-sm text-green-700">The available transaction history did not trigger any of the configured rules. This does not guarantee that the transaction is risk-free.</p>
+              </div>
+            )}
+            <p className="mt-4 text-xs text-slate-500">These indicators are based on predefined demonstration rules and fictional data. They are not validated fraud predictions.</p>
+            </div>)}
+
+            {selectedTransaction && (
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Transaction Timeline</h3>
+                  <p className="mt-1 text-sm text-slate-500">Chronological history of events associated with this transaction</p>
+                </div>
+                <div className="mt-6 space-y-5">
+                  {selectedTransaction.events.map((event, index) => (
+                    <div key={`${event.event}-${index}`} className="flex gap-4">
+                      <div className="flex flex-col items-center">
+                        <div className="h-3 w-3 rounded-full bg-blue-600 ring-4 ring-blue-100" />
+                        {index !== selectedTransaction.events.length - 1 && (
+                          <div className="mt-2 min-h-8 w-px flex-1 bg-slate-200" />
+                        )}
+                        </div>
+                        <div className="pb-2">
+                          <p className="text-sm font-semibold text-slate-900">{event.event}</p>
+                          <p className="mt-1 text-xs text-slate-500">{new Date(event.timestamp).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+                
+                <p className="mt-4 border-t border-slate-200 pt-3 text-xs text-slate-500">Timeline events are fictional demonstration data and have not been retrieved from PayPal or another payment provider.</p>
+              </div>
+            )}
+
             {selected && (
               <div id="investigation" className="rounded-2xl border border-blue-200 bg-white p-6 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -450,19 +763,11 @@ export default function Home() {
                 
 <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50/60 p-5">
   <div className="flex flex-wrap items-center justify-between gap-2">
-    <h4 className="font-bold text-slate-900">
-      Explainable risk assessment
-    </h4>
-    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
-      Rule-based demo
-    </span>
+    <h4 className="font-bold text-slate-900">Explainable risk assessment</h4>
+    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">Rule-based demo</span>
   </div>
 
-  <p className="mt-2 text-sm text-slate-600">
-    These signals explain review priorities, not the probability
-    of losing a dispute. They are generated from the sample case
-    fields and have not been validated against real outcomes.
-  </p>
+  <p className="mt-2 text-sm text-slate-600">These signals explain review priorities, not the probability of losing a dispute. They are generated from the sample case fields and have not been validated against real outcomes.</p>
 
   <div className="mt-4 space-y-3">
     {getRiskSignals(selected).map((signal) => (
