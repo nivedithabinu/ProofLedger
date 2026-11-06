@@ -1,354 +1,39 @@
 "use client";
-import { 
-  useMemo, useState, useEffect,
+import {
+  useMemo,
+  useState,
+  useEffect,
 } from "react";
 
-type Dispute = {
-  id: string;
-  customer: string;
-  amount: string;
-  reason: string;
-  date: string;
-  risk: "High" | "Medium" | "Low";
-  status: "Evidence needed" | "Under review" | "Evidence ready";
-  initials: string;
-  color: string;
-};
 
-type TransactionEvent = {
-  event: string;
-  timestamp: string;
-};
+import type {
+  Dispute,
+  TransactionEvent,
+  TransactionRecord,
+  RiskSignal,
+  EvidenceGuidance,
+  AuditEntry,
+} from "@/types";
 
-type TransactionRecord = {
-  transactionId: string;
-  disputeId: string;
-  orderId: string;
-  transactionDate: string;
-  amount: string;
-  currency: string;
-  paymentMethod: string;
-  paymentStatus: "Completed" | "Pending" | "Refunded";
-  customerId: string;
-  accountAgeDays: number;
-  previousTransactions: number;
-  successfulPayments: number;
-  previousDisputes: number;
-  events: TransactionEvent[];
-};
+import { disputes, transactions, metrics } from "@/lib/data";
 
-const disputes: Dispute[] = [
-  {
-    id: "DP-2026-1042",
-    customer: "Olivia Martin",
-    amount: "$1,249.00",
-    reason: "Item not received",
-    date: "Oct 22, 2026",
-    risk: "High",
-    status: "Evidence needed",
-    initials: "OM",
-    color: "bg-violet-100 text-violet-700",
-  },
+import {
+  getEvidence,
+  getEvidenceGuidance,
+  getEvidencePriority,
+  getEvidenceEventLinks,
+} from "@/lib/evidence";
 
-  {
-    id: "DP-2026-1041",
-    customer: "James Wilson",
-    amount: "$389.50",
-    reason: "Unrecognized transaction",
-    date: "Oct 22, 2026",
-    risk: "Medium",
-    status: "Under review",
-    initials: "JW",
-    color: "bg-blue-100 text-blue-700",
-  },
+import {
+  getTransactionRiskSignals,
+  getRiskSignals,
+} from "@/lib/risk";
 
-  {
-    id: "DP-2026-1039",
-    customer: "Sophia Chen",
-    amount: "$89.99",
-    reason: "Duplicate charge",
-    date: "Oct 21, 2026",
-    risk: "Low",
-    status: "Evidence ready",
-    initials: "SC",
-    color: "bg-rose-100 text-rose-700",
-  },
+import RecentActivity from "@/components/proof-records/RecentActivity";
 
-  {
-    id: "DP-2026-1037",
-    customer: "Noah Williams",
-    amount: "$2,450.00",
-    reason: "Item not as described",
-    date: "Oct 20, 2026",
-    risk: "High",
-    status: "Under review",
-    initials: "NW",
-    color: "bg-amber-100 text-amber-700",
-  },
-
-  {
-    id: "DP-2026-1034",
-    customer: "Emma Thompson",
-    amount: "$156.00",
-    reason: "Refund not received",
-    date: "Oct 19, 2026",
-    risk: "Medium",
-    status: "Evidence ready",
-    initials: "ET",
-    color: "bg-emerald-100 text-emerald-700",
-  },
-];
-
-
-const transactions: TransactionRecord[] = [
-  {
-    transactionId: "TXN-2026-84721",
-    disputeId: "DP-2026-1042",
-    orderId: "ORD-2026-51021",
-    transactionDate: "2026-10-18T10:30:00",
-    amount: "$1,249.00",
-    currency: "USD",
-    paymentMethod: "PayPal",
-    paymentStatus: "Completed",
-    customerId: "CUS-10042",
-    accountAgeDays: 420,
-    previousTransactions: 12,
-    successfulPayments: 11,
-    previousDisputes: 1,
-    events: [
-      { event: "Payment initiated", timestamp: "2026-10-18T10:30:00" },
-      { event: "Payment completed", timestamp: "2026-10-18T10:30:05" },
-      { event: "Order shipped", timestamp: "2026-10-19T14:15:00" },
-      { event: "Dispute opened", timestamp: "2026-10-22T11:00:00" },
-    ],
-  },
-
-  {
-    transactionId: "TXN-2026-84720",
-    disputeId: "DP-2026-1041",
-    orderId: "ORD-2026-51020",
-    transactionDate: "2026-10-17T09:15:00",
-    amount: "$389.50",
-    currency: "USD",
-    paymentMethod: "PayPal",
-    paymentStatus: "Completed",
-    customerId: "CUS-10041",
-    accountAgeDays: 180,
-    previousTransactions: 6,
-    successfulPayments: 6,
-    previousDisputes: 0,
-    events: [
-      { event: "Payment initiated", timestamp: "2026-10-17T09:15:00" },
-      { event: "Payment completed", timestamp: "2026-10-17T09:15:04" },
-      { event: "Dispute opened", timestamp: "2026-10-22T09:30:00" },
-    ],
-  },
-
-  {
-    transactionId: "TXN-2026-84719",
-    disputeId: "DP-2026-1039",
-    orderId: "ORD-2026-51019",
-    transactionDate: "2026-10-16T12:00:00",
-    amount: "$89.99",
-    currency: "USD",
-    paymentMethod: "PayPal",
-    paymentStatus: "Completed",
-    customerId: "CUS-10039",
-    accountAgeDays: 730,
-    previousTransactions: 24,
-    successfulPayments: 24,
-    previousDisputes: 0,
-    events: [
-      { event: "Payment initiated", timestamp: "2026-10-16T12:00:00" },
-      { event: "Payment completed", timestamp: "2026-10-16T12:00:03" },
-      { event: "Dispute opened", timestamp: "2026-10-21T13:00:00" },
-    ],
-  },
-
-  {
-    transactionId: "TXN-2026-84718",
-    disputeId: "DP-2026-1037",
-    orderId: "ORD-2026-51018",
-    transactionDate: "2026-10-15T16:45:00",
-    amount: "$2,450.00",
-    currency: "USD",
-    paymentMethod: "PayPal",
-    paymentStatus: "Completed",
-    customerId: "CUS-10037",
-    accountAgeDays: 95,
-    previousTransactions: 3,
-    successfulPayments: 3,
-    previousDisputes: 0,
-    events: [
-      { event: "Payment initiated", timestamp: "2026-10-15T16:45:00" },
-      { event: "Payment completed", timestamp: "2026-10-15T16:45:06" },
-      { event: "Order shipped", timestamp: "2026-10-17T10:00:00" },
-      { event: "Dispute opened", timestamp: "2026-10-20T14:00:00" },
-    ],
-  },
-
-  {
-    transactionId: "TXN-2026-84717",
-    disputeId: "DP-2026-1034",
-    orderId: "ORD-2026-51017",
-    transactionDate: "2026-10-14T11:20:00",
-    amount: "$156.00",
-    currency: "USD",
-    paymentMethod: "PayPal",
-    paymentStatus: "Completed",
-    customerId: "CUS-10034",
-    accountAgeDays: 365,
-    previousTransactions: 15,
-    successfulPayments: 15,
-    previousDisputes: 0,
-    events: [
-      { event: "Payment initiated", timestamp: "2026-10-14T11:20:00" },
-      { event: "Payment completed", timestamp: "2026-10-14T11:20:04" },
-      { event: "Refund requested", timestamp: "2026-10-18T09:00:00" },
-      { event: "Dispute opened", timestamp: "2026-10-19T15:00:00" },
-    ],
-  },
-];
-
-type RiskSignal = {
-  title: string;
-  explanation: string;
-};
-
-function getTransactionRiskSignals(transaction: TransactionRecord): RiskSignal[] {
-  const signals: RiskSignal[] = [];
-  const successRate = transaction.previousTransactions > 0 ? transaction.successfulPayments / transaction.previousTransactions : 0;
-  const amount = Number(transaction.amount.replace(/[^0-9.]/g, ""));
-  
-  if (transaction.accountAgeDays<90) {
-    signals.push({
-      title: "New Customer Account",
-      explanation: `This account is only ${transaction.accountAgeDays} days old. Newer accounts may warrant additional verification.`,
-    });
-  }
-
-  if (transaction.previousDisputes >= 1) {
-    signals.push({
-      title: "Previous Dispute History",
-      explanation: `This customer has ${transaction.previousDisputes} previous dispute(s). Review the historical context before making a decision.`,
-    });
-  }
-
-  if (transaction.previousTransactions > 0 && successRate < 0.8) {
-    signals.push({
-      title: "Low Payment Success Rate",
-      explanation: `Only ${(successRate * 100).toFixed(1)}% of previous transactions were successful. This may warrant further review.`,
-    });
-  }
-
-  if (amount >= 2000) {
-    signals.push({
-      title: "High-Value Transaction",
-      explanation: `The transaction amount is ${transaction.amount}. Consider additional verification for this higher-value payment.`,
-    });
-  }
-
-  return signals;
-}
-
-type AuditEntry = {
-  id: string;
-  disputeId: string;
-  action: "Evidence collected" | "Evidence unmarked";
-  evidence: string;
-  timestamp: string;
-};
-
-function getEvidence(reason: string): string[] {
-  switch (reason) {
-    case "Item not received":
-      return [
-        "Order confirmation and transaction details",
-        "Shipping tracking and delivery confirmation",
-        "Customer communication about delivery",
-      ];
-    
-    case "Unrecognized transaction":
-      return [
-        "Transaction details and payment reference",
-        "Available order and fulfillment records",
-        "Customer communications or account activity records",
-      ];
-    
-    case "Duplicate charge":
-      return [
-        "Transaction IDs and timestamps for both charges",
-        "Payment processor records showing each charge",
-        "Refund or reversal records, if applicable",
-      ];
-
-    case "Item not as described":
-      return [
-        "Original product listing and description",
-        "Order details and fulfillment records",
-        "Customer complaint and resolution communications",
-      ];
-
-    case "Refund not received":
-      return [
-        "Original transaction and refund policy",
-        "Refund initiation and processing records",
-        "Payment processor reference and customer communications",
-      ];
-
-    default:
-      return [
-        "Order confirmation and transaction details",
-        "Relevant fulfillment or service records",
-        "Customer communications and resolution history",
-      ];  
-  }
-}
-
-function getRiskSignals(dispute: Dispute): RiskSignal[] {
-  const signals: RiskSignal[] = [];
-  if (dispute.status==="Evidence needed") {
-    signals.push({
-      title: "Evidence collection needed",
-      explanation: "This demo case is marked as needing evidence. Review the relevant records before deciding on a response.",
-    })
-  }
-
-  return signals;
-}
-
-const metrics = [
-  { 
-    label: "Open disputes", 
-    value: "24", 
-    change: "+4 this week", 
-    icon: "◈", 
-    tone: "text-blue-600 bg-blue-50" 
-  },
-
-  { 
-    label: "Amount at risk", 
-    value: "$12,840", 
-    change: "Across open cases", 
-    icon: "$", 
-    tone: "text-rose-600 bg-rose-50" },
-  
-  { 
-    label: "Evidence ready", 
-    value: "18", 
-    change: "Awaiting review", 
-    icon: "✓", 
-    tone: "text-emerald-600 bg-emerald-50" 
-  },
-  
-  { 
-    label: "Response rate", 
-    value: "94.2%", 
-    change: "+2.4% this month", 
-    icon: "↗", 
-    tone: "text-violet-600 bg-violet-50" 
-  },
-];
+import TransactionIntelligence from "@/components/investigation/TransactionIntelligence";
+import InvestigationSummary from "@/components/investigation/InvestigationSummary";
+import EvidenceIntelligence from "@/components/investigation/EvidenceIntelligence";
 
 function RiskBadge({ risk }: { risk: string }) {
   const styles: Record<string, string> = {
@@ -384,7 +69,40 @@ export default function Home() {
   const [evidenceLoaded, setEvidenceLoaded] = useState(false);
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [auditLoaded, setAuditLoaded] = useState(false);
-  
+
+  // Load previously collected evidence from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("proofledger-evidence");
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) {
+          setCollectedEvidence(parsed);
+        }
+      }
+    }
+
+    catch {
+      console.error("Unable to load saved evidence.");
+    }
+
+    finally {
+      setEvidenceLoaded(true);
+    }
+  }, []);
+
+  // Save collected evidence whenever it changes
+  useEffect(() => {
+    if (!evidenceLoaded) return;
+    try {
+      localStorage.setItem("proofledger-evidence", JSON.stringify(collectedEvidence));
+    }
+
+    catch {
+      console.error("Unable to save collected evidence.");
+    }
+  }, [collectedEvidence, evidenceLoaded]);
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem("proofledger-audit");
@@ -398,8 +116,8 @@ export default function Home() {
 
     catch {
       console.error("Unable to load audit history.");
-    } 
-    
+    }
+
     finally {
       setAuditLoaded(true);
     }
@@ -542,10 +260,10 @@ export default function Home() {
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-slate-500">Showing <strong>{filteredDisputes.length}</strong> of {disputes.length} sample cases</p>
-                  <button onClick={() => { 
-                    setSearch(""); 
-                    setRiskFilter("All"); 
-                    setStatusFilter("All"); 
+                  <button onClick={() => {
+                    setSearch("");
+                    setRiskFilter("All");
+                    setStatusFilter("All");
                   }} className="text-xs font-semibold text-blue-600 hover:text-blue-800">Clear filters</button>
                 </div>
               </div>
@@ -599,149 +317,6 @@ export default function Home() {
               </div>
             </div>
 
-            {selectedTransaction && (
-              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900">Transaction Overview</h3>
-                    <p className="mt-1 text-sm text-slate-500">Payment details associated with this dispute</p>
-                  </div>
-                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">{selectedTransaction.paymentStatus}</span>
-                </div>
-                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <div>
-                    <p className="text-xs text-slate-500">Transaction ID</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">{selectedTransaction.transactionId}</p>
-                  </div>
-                <div>
-                  <p className="text-xs text-slate-500">Order ID</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{selectedTransaction.orderId}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Transaction Amount</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{selectedTransaction.amount} {selectedTransaction.currency}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Payment Method</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{selectedTransaction.paymentMethod}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Transaction Date</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{new Date(selectedTransaction.transactionDate).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Payment Status</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{selectedTransaction.paymentStatus}</p>
-                </div>
-              </div>
-
-              <p className="mt-5 border-t border-slate-200 pt-3 text-xs text-slate-500">Demo data: Transaction information is fictional and is not retrieved from a live PayPal account.</p>
-            </div>)}
-
-            {selectedTransaction && (
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Customer Context</h3>
-                  <p className="mt-1 text-sm text-slate-500">Historical account activity associated with this transaction</p>
-                </div>
-                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-xs text-slate-500">Customer ID</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">{selectedTransaction.customerId}</p>
-                  </div>
-
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-xs text-slate-500">Account Age</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">{selectedTransaction.accountAgeDays} days</p>
-                  </div>
-                  
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-xs text-slate-500">Previous Transactions</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">{selectedTransaction.previousTransactions}</p>
-                  </div>
-                  
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-xs text-slate-500">Successful Payments</p>
-                    <p className="mt-2 text-lg font-semibold text-green-700">{selectedTransaction.successfulPayments}</p>
-                  </div>
-                  
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-xs text-slate-500">Previous Disputes</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">{selectedTransaction.previousDisputes}</p>
-                  </div>
-                  
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-xs text-slate-500">Payment Success Rate</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">{selectedTransaction.previousTransactions > 0 ? `${((selectedTransaction.successfulPayments/selectedTransaction.previousTransactions)*100).toFixed(1)}%` : "N/A"}</p>
-                  </div>
-                </div>
-                
-                <p className="mt-4 text-xs text-slate-500">Customer history is fictional demo data. It does not represent verified PayPal customer records.</p>
-              </div>
-            )}
-
-            {selectedTransaction && (
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900">Transaction Risk Signals</h3>
-                    <p className="mt-1 text-sm text-slate-500">Rule-based indicators identified from transaction history</p>
-                  </div>
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">Explainable Assessment</span>
-                </div>
-                
-                {getTransactionRiskSignals(selectedTransaction).length > 0 ? (
-                  <div className="mt-5 space-y-3">
-                    {getTransactionRiskSignals(selectedTransaction).map((signal, index) => (
-                      <div key={index} className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                        <div className="flex items-start gap-3">
-                          <span className="mt-0.5 text-amber-600">⚠</span>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">{signal.title}</p>
-                          <p className="mt-1 text-sm text-slate-600">{signal.explanation}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-              ) : (
-              <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4">
-                <p className="text-sm font-semibold text-green-800">No predefined risk indicators triggered</p>
-                <p className="mt-1 text-sm text-green-700">The available transaction history did not trigger any of the configured rules. This does not guarantee that the transaction is risk-free.</p>
-              </div>
-            )}
-            <p className="mt-4 text-xs text-slate-500">These indicators are based on predefined demonstration rules and fictional data. They are not validated fraud predictions.</p>
-            </div>)}
-
-            {selectedTransaction && (
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Transaction Timeline</h3>
-                  <p className="mt-1 text-sm text-slate-500">Chronological history of events associated with this transaction</p>
-                </div>
-                <div className="mt-6 space-y-5">
-                  {selectedTransaction.events.map((event, index) => (
-                    <div key={`${event.event}-${index}`} className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <div className="h-3 w-3 rounded-full bg-blue-600 ring-4 ring-blue-100" />
-                        {index !== selectedTransaction.events.length - 1 && (
-                          <div className="mt-2 min-h-8 w-px flex-1 bg-slate-200" />
-                        )}
-                        </div>
-                        <div className="pb-2">
-                          <p className="text-sm font-semibold text-slate-900">{event.event}</p>
-                          <p className="mt-1 text-xs text-slate-500">{new Date(event.timestamp).toLocaleString()}</p>
-                        </div>
-                      </div>
-                    ))
-                  }
-                </div>
-                
-                <p className="mt-4 border-t border-slate-200 pt-3 text-xs text-slate-500">Timeline events are fictional demonstration data and have not been retrieved from PayPal or another payment provider.</p>
-              </div>
-            )}
-
             {selected && (
               <div id="investigation" className="rounded-2xl border border-blue-200 bg-white p-6 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -760,7 +335,7 @@ export default function Home() {
                   <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Current status</p><div className="mt-2"><StatusBadge status={selected.status} /></div></div>
                 </div>
 
-                
+
 <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50/60 p-5">
   <div className="flex flex-wrap items-center justify-between gap-2">
     <h4 className="font-bold text-slate-900">Explainable risk assessment</h4>
@@ -791,63 +366,14 @@ export default function Home() {
   collectedEvidence.includes(`${selected.id}-${item}`)).length} of {getEvidence(selected.reason).length} records confirmed
 </p>
 
-{/* Evidence completeness calculations */}
-{(() => {
-  const evidenceItems = getEvidence(selected.reason);
-  const collectedCount = evidenceItems.filter((evidence) => collectedEvidence.includes(`${selected.id}-${evidence}`)).length;
-  const missingCount = evidenceItems.length-collectedCount;
-  const completionPercentage = evidenceItems.length === 0 ? 0 : Math.round((collectedCount / evidenceItems.length) * 100);
-  return (
-    <>
-    {/* Evidence completeness card */}
-    <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="font-bold text-slate-900">Evidence completeness</h4>
-        <span className="text-lg font-bold text-emerald-700">{completionPercentage}%</span>
-      </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${completionPercentage}%` }}/></div>
-        <div className="mt-3 flex justify-between text-sm">
-          <span className="text-emerald-700">{collectedCount} collected</span>
-          <span className="text-slate-500">{missingCount} missing</span>
-        </div>
-        <p className="mt-3 text-sm font-medium text-slate-700">
-          {missingCount === 0 ? "All recommended evidence has been confirmed. Ready for merchant review." : `${missingCount} recommended evidence item(s) still need confirmation.`}
-        </p>
-      </div>
-
-      {/* Evidence checklist */}
-      <ul className="mt-4 space-y-3 text-sm text-slate-700">
-        {evidenceItems.map((item) => {
-          const evidenceKey = `${selected.id}-${item}`;
-          const isCollected = collectedEvidence.includes(evidenceKey);
-          return (
-            <li key={item}>
-              <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${
-                isCollected ? "border-emerald-200 bg-emerald-50" : "border-slate-100"
-                }`}>
-                <input type="checkbox" checked={isCollected} onChange={(event) => {
-                  const checked = event.target.checked;
-                  setCollectedEvidence((previous) => checked ? previous.includes(evidenceKey) ? previous : [...previous, evidenceKey] : previous.filter((entry) => entry !== evidenceKey));
-                  const entry: AuditEntry = {
-                    id: crypto.randomUUID(),
-                    disputeId: selected.id,
-                    action: checked ? "Evidence collected" : "Evidence unmarked",
-                    evidence: item,
-                    timestamp: new Date().toISOString(),
-                  };
-
-                  setAuditEntries((previous) => [entry, ...previous]);
-                }} className="mt-1 h-4 w-4 accent-emerald-600" />
-                <span>{item}</span>
-              </label>
-            </li>
-          );
-        })}
-      </ul>
-    </>
-  );
-})()}
+<EvidenceIntelligence
+  selected={selected}
+  selectedTransaction={selectedTransaction}
+  collectedEvidence={collectedEvidence}
+  setCollectedEvidence={setCollectedEvidence}
+  setAuditEntries={setAuditEntries}
+/>
+<InvestigationSummary selected={selected} selectedTransaction={selectedTransaction} collectedEvidence={collectedEvidence}/>
 
 <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
   <p className="text-sm font-semibold text-slate-800">Next step: merchant review</p>
@@ -872,29 +398,7 @@ export default function Home() {
     ))}
   </div>
   </div>
-  <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-  <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">Proof Records</p>
-  <h3 className="mt-2 text-lg font-bold text-slate-900">Recent activity</h3>
-  <p className="mt-1 text-sm text-slate-500">A history of evidence checklist changes in this browser.</p>
-  <div className="mt-5 max-h-96 space-y-4 overflow-y-auto pr-2">
-    {auditEntries.length === 0 ? (
-      <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">No activity yet. Open a dispute and update its evidence checklist.</p>
-    ) : (
-      auditEntries.slice(0, 10).map((entry) => (
-      <div key={entry.id} className="border-l-2 border-emerald-200 pl-4">
-        <p className="text-sm font-semibold text-slate-800">{entry.action}</p>
-        <p className="mt-1 text-sm text-slate-600">{entry.evidence}</p>
-        <p className="mt-1 font-mono text-xs text-slate-400">{entry.disputeId}</p>
-        <p className="mt-1 text-xs text-slate-500">{new Date(entry.timestamp).toLocaleString()}</p>
-      </div>
-      ))
-    )}
-  </div>
-
-  <p className="mt-5 border-t border-slate-100 pt-3 text-xs text-slate-400">
-    Demo audit history stored in this browser. Not tamper-proof.
-  </p>
-</div>
+  <RecentActivity auditEntries={auditEntries}/>
 
 <div className="md:col-span-2 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
 <p className="text-xs font-bold uppercase tracking-widest text-violet-600">Product roadmap</p>
