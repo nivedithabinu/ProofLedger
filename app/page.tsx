@@ -13,6 +13,8 @@ import type {
   RiskSignal,
   EvidenceGuidance,
   AuditEntry,
+  PayPalConnectionState,
+  PayPalDispute,
 } from "@/types";
 
 import { disputes, transactions, metrics } from "@/lib/data";
@@ -34,6 +36,7 @@ import RecentActivity from "@/components/proof-records/RecentActivity";
 import TransactionIntelligence from "@/components/investigation/TransactionIntelligence";
 import InvestigationSummary from "@/components/investigation/InvestigationSummary";
 import EvidenceIntelligence from "@/components/investigation/EvidenceIntelligence";
+import LivePayPalDisputes from "@/components/paypal/LivePayPalDisputes";
 
 function RiskBadge({ risk }: { risk: string }) {
   const styles: Record<string, string> = {
@@ -64,6 +67,66 @@ export default function Home() {
   const [riskFilter, setRiskFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selected, setSelected] = useState<Dispute | null>(null);
+  const [paypalConnection, setPaypalConnection] = useState<PayPalConnectionState>({
+    status: "idle",
+    total: 0,
+    error: null,
+  });
+  const [paypalDisputes, setPaypalDisputes] = useState<PayPalDispute[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadPayPalDisputes() {
+      setPaypalConnection({
+        status: "loading",
+        total: 0,
+        error: null,
+      });
+      
+      try {
+        const response = await fetch("/api/paypal/disputes", {
+          cache: "no-store",
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || "PayPal connection failed.");
+        }
+
+        if (!Array.isArray(data.disputes)) {
+          throw new Error("Invalid PayPal dispute response.");
+        }
+        
+        if (active) {
+          setPaypalDisputes(data.disputes);
+          setPaypalConnection({
+            status: "connected",
+            total: data.total,
+            error: null,
+          });
+        }
+      }
+
+      catch {
+        setPaypalDisputes([]);
+        if (active) {
+          setPaypalConnection({
+            status: "error",
+            total: 0,
+            error: "Unable to connect to PayPal Sandbox.",
+          });
+        }
+      }
+    }
+    
+    loadPayPalDisputes();
+    
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const selectedTransaction = selected ? transactions.find((transaction)=>transaction.disputeId===selected.id) : undefined;
   const [collectedEvidence, setCollectedEvidence] = useState<string[]>([]);
   const [evidenceLoaded, setEvidenceLoaded] = useState(false);
@@ -178,7 +241,7 @@ export default function Home() {
           <div className="mt-auto p-4">
             <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
               <p className="mb-2 text-xs font-semibold text-white">● Demo environment</p>
-              <p className="text-xs leading-5 text-slate-400">Fictional sample data only. No live PayPal account connected.</p>
+              <p className="text-xs leading-5 text-slate-400">PayPal Sandbox connected. Demo cases use fictional sample data.</p>
             </div>
           </div>
         </aside>
@@ -189,9 +252,14 @@ export default function Home() {
               <p className="text-xs text-slate-500">Workspace / Overview</p>
               <h1 className="mt-1 text-xl font-bold text-slate-900">Risk & dispute overview</h1>
             </div>
-            <span className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600">● Demo mode</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600">● Demo mode</span>
+              <span className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                paypalConnection.status === "connected" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : paypalConnection.status === "error" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-amber-200 bg-amber-50 text-amber-700"
+              }`}>
+                {paypalConnection.status === "connected" ? `● PayPal Sandbox connected · ${paypalConnection.total} disputes` : paypalConnection.status === "error" ? "● PayPal connection failed" : "● Connecting to PayPal..."}</span>
+            </div>
           </header>
-
           <div className="mx-auto max-w-[1500px] space-y-7 p-5 sm:p-8">
             <div>
               <p className="text-sm font-medium text-blue-600">MERCHANT WORKSPACE</p>
@@ -219,11 +287,13 @@ export default function Home() {
               <a href="#disputes" className="rounded-lg border border-amber-300 bg-white px-4 py-2.5 text-center text-sm font-semibold text-amber-800 hover:bg-amber-100">Review cases ↓</a>
             </div>
 
+            <LivePayPalDisputes disputes={paypalDisputes} loading={paypalConnection.status === "loading"} error={paypalConnection.error}/>
+
+
             <div id="disputes" className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
               <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
                 <h3 className="font-bold text-slate-900">Dispute explorer</h3>
                 <p className="mt-1 text-xs text-slate-500">Search cases, filter by risk, or open a dispute to investigate it.</p>
-
                 <div className="mt-5 grid gap-3 md:grid-cols-3">
                   <div className="md:col-span-1">
                     <label htmlFor="dispute-search" className="mb-1.5 block text-xs font-semibold text-slate-600">Search disputes</label>
@@ -236,7 +306,6 @@ export default function Home() {
                       className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     />
                   </div>
-
                   <div>
                     <label htmlFor="risk-filter" className="mb-1.5 block text-xs font-semibold text-slate-600">Risk level</label>
                     <select id="risk-filter" value={riskFilter} onChange={(event) => setRiskFilter(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500">
@@ -246,7 +315,6 @@ export default function Home() {
                       <option>Low</option>
                     </select>
                   </div>
-
                   <div>
                     <label htmlFor="status-filter" className="mb-1.5 block text-xs font-semibold text-slate-600">Case status</label>
                     <select id="status-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500">
@@ -257,7 +325,6 @@ export default function Home() {
                     </select>
                   </div>
                 </div>
-
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-slate-500">Showing <strong>{filteredDisputes.length}</strong> of {disputes.length} sample cases</p>
                   <button onClick={() => {
@@ -267,7 +334,6 @@ export default function Home() {
                   }} className="text-xs font-semibold text-blue-600 hover:text-blue-800">Clear filters</button>
                 </div>
               </div>
-
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[850px] text-left text-sm">
                   <thead className="bg-slate-50/80 text-xs text-slate-500">
@@ -413,7 +479,7 @@ export default function Home() {
 
 <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 py-5 text-xs text-slate-400">
   <span>ProofLedger © 2026</span>
-  <span>Prototype · All dispute data is fictional</span>
+  <span>Sandbox API connected · Demo cases are fictional</span>
   </footer>
   </div>
   </section>

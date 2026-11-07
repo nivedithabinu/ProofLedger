@@ -50,3 +50,21 @@ export type AuditEntry = {
     evidence: string;
     timestamp: string;
 };
+
+export type PayPalConnectionState = {
+    status: "idle" | "loading" | "connected" | "error";
+    total: number;
+    error: string | null;
+};
+
+export type PayPalDispute = {
+    dispute_id: string;
+    status?: string;
+    reason?: string;
+    dispute_amount?: {
+        value?: string;
+        currency_code?: string;
+    };
+    dispute_life_cycle_stage?: string;
+    create_time?: string;
+};
