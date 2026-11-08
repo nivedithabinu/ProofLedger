@@ -37,6 +37,7 @@ import TransactionIntelligence from "@/components/investigation/TransactionIntel
 import InvestigationSummary from "@/components/investigation/InvestigationSummary";
 import EvidenceIntelligence from "@/components/investigation/EvidenceIntelligence";
 import LivePayPalDisputes from "@/components/paypal/LivePayPalDisputes";
+import AIInvestigation from "@/components/investigation/AIInvestigation";
 
 function RiskBadge({ risk }: { risk: string }) {
   const styles: Record<string, string> = {
@@ -439,15 +440,17 @@ export default function Home() {
   setCollectedEvidence={setCollectedEvidence}
   setAuditEntries={setAuditEntries}
 />
+
+<AIInvestigation
+  selected={selected}
+  collectedEvidence={collectedEvidence}
+/>
+
 <InvestigationSummary selected={selected} selectedTransaction={selectedTransaction} collectedEvidence={collectedEvidence}/>
 
 <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
   <p className="text-sm font-semibold text-slate-800">Next step: merchant review</p>
-  <p className="mt-1 text-sm leading-6 text-slate-500">
-    Review the suggested records, confirm which evidence is available,
-    and check the applicable response deadline. ProofLedger does not
-    submit evidence or take payment actions automatically.
-  </p>
+  <p className="mt-1 text-sm leading-6 text-slate-500">Review the suggested records, confirm which evidence is available, and check the applicable response deadline. ProofLedger does not submit evidence or take payment actions automatically.</p>
 </div>
 </div>)}
 

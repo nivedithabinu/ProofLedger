@@ -68,3 +68,26 @@ export type PayPalDispute = {
     dispute_life_cycle_stage?: string;
     create_time?: string;
 };
+
+export type InvestigationFinding = {
+    title: string;
+    explanation: string;
+    severity: "high" | "medium" | "low";
+    supportingFacts: string[];
+};
+
+export type EvidenceRecommendation = {
+    evidenceName: string;
+    reason: string;
+    priority: "high" | "medium" | "low";
+    availability: "available" | "missing" | "unknown";
+};
+
+export type InvestigationReport = {
+    summary: string;
+    findings: InvestigationFinding[];
+    evidenceRecommendations: EvidenceRecommendation[];
+    missingInformation: string[];
+    suggestedNextSteps: string[];
+    limitations: string[];
+};
