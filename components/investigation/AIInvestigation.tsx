@@ -8,11 +8,13 @@ import { getEvidence } from "@/lib/evidence";
 type AIInvestigationProps = {
     selected: Dispute;
     collectedEvidence: string[];
+    onReportGenerated: (report: InvestigationReport) => void;
 };
 
 export default function AIInvestigation({
     selected,
     collectedEvidence,
+    onReportGenerated,
 }: AIInvestigationProps) {
     const [report, setReport] = useState<InvestigationReport | null>(null);
     const [loading, setLoading] = useState(false);
@@ -53,7 +55,9 @@ export default function AIInvestigation({
                 throw new Error(data.error || "Unable to generate investigation report.");
             }
             
-            setReport(data.report as InvestigationReport);
+            const generatedReport = data.report as InvestigationReport;
+            setReport(generatedReport);
+            onReportGenerated(generatedReport);
         } 
         
         catch (err) {

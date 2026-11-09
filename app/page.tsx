@@ -15,6 +15,7 @@ import type {
   AuditEntry,
   PayPalConnectionState,
   PayPalDispute,
+  InvestigationReport,
 } from "@/types";
 
 import { disputes, transactions, metrics } from "@/lib/data";
@@ -68,6 +69,10 @@ export default function Home() {
   const [riskFilter, setRiskFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selected, setSelected] = useState<Dispute | null>(null);
+  const [investigationRecord, setInvestigationRecord] = useState<{
+    disputeId: String;
+    report: InvestigationReport;
+  } | null>(null);
   const [paypalConnection, setPaypalConnection] = useState<PayPalConnectionState>({
     status: "idle",
     total: 0,
@@ -83,14 +88,14 @@ export default function Home() {
         total: 0,
         error: null,
       });
-      
+
       try {
         const response = await fetch("/api/paypal/disputes", {
           cache: "no-store",
         });
-        
+
         const data = await response.json();
-        
+
         if (!response.ok || !data.success) {
           throw new Error(data.error || "PayPal connection failed.");
         }
@@ -98,7 +103,7 @@ export default function Home() {
         if (!Array.isArray(data.disputes)) {
           throw new Error("Invalid PayPal dispute response.");
         }
-        
+
         if (active) {
           setPaypalDisputes(data.disputes);
           setPaypalConnection({
@@ -120,9 +125,9 @@ export default function Home() {
         }
       }
     }
-    
+
     loadPayPalDisputes();
-    
+
     return () => {
       active = false;
     };
@@ -444,9 +449,19 @@ export default function Home() {
 <AIInvestigation
   selected={selected}
   collectedEvidence={collectedEvidence}
+  onReportGenerated={(report) => setInvestigationRecord({
+    disputeId: selected.id,
+    report,
+  })
+  }
 />
 
-<InvestigationSummary selected={selected} selectedTransaction={selectedTransaction} collectedEvidence={collectedEvidence}/>
+<InvestigationSummary
+  selected={selected}
+  selectedTransaction={selectedTransaction}
+  collectedEvidence={collectedEvidence}
+  investigationReport={investigationRecord?.disputeId === selected.id ? investigationRecord.report : null}
+/>
 
 <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
   <p className="text-sm font-semibold text-slate-800">Next step: merchant review</p>

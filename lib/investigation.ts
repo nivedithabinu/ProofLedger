@@ -95,7 +95,7 @@ const investigationSchema = {
 export async function generateInvestigationReport(caseData: Record<string, unknown>): Promise<InvestigationReport> {
     const client = getGeminiClient();
     const response = await client.models.generateContent({
-    model: "gemini-3.8-flash",
+    model: "gemini-3.5-flash",
     contents: JSON.stringify(caseData),
     config: {
         systemInstruction: `
@@ -126,6 +126,12 @@ export async function generateInvestigationReport(caseData: Record<string, unkno
     if (!response.text) {
         throw new Error("Gemini returned an empty investigation report.");
     }
-    
-    return JSON.parse(response.text) as InvestigationReport;
+
+    try {
+        return JSON.parse(response.text) as InvestigationReport;
+    }
+
+    catch {
+        throw new Error("Gemini returned an invalid investigation report. Please try again.");
+    }
 }
